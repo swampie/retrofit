@@ -41,6 +41,7 @@ final class HttpRequestBuilder {
   private List<NameValuePair> nonPathParams;
   private RequestLine requestLine;
   private TypedBytes singleEntity;
+  private List<Module> modules;
 
   HttpRequestBuilder(Converter converter) {
     this.converter = converter;
@@ -76,6 +77,10 @@ final class HttpRequestBuilder {
     return this;
   }
 
+  HttpRequestBuilder setModules(List<Module> modules) {
+	    this.modules = modules;
+	    return this;
+	  }
   Object[] getArgs() {
     return args;
   }
@@ -217,7 +222,11 @@ final class HttpRequestBuilder {
       }
     }
 
-    return requestLine.getHttpMethod().createFrom(this);
+    HttpUriRequest req =  requestLine.getHttpMethod().createFrom(this);
+    for (Module m :this.modules) {
+		m.preHandle(req);
+	}
+    return req;
   }
 
   private String doReplace(String replacedPath, String paramName, String newVal) {

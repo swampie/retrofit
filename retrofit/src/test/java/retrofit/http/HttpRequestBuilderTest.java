@@ -1,28 +1,55 @@
 // Copyright 2011 Square, Inc.
 package retrofit.http;
 
-import com.google.gson.Gson;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.junit.Test;
+import static org.fest.assertions.api.Assertions.assertThat;
+import static org.fest.assertions.api.Fail.fail;
 
-import javax.inject.Named;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.fest.assertions.api.Assertions.assertThat;
-import static org.fest.assertions.api.Fail.fail;
+import javax.inject.Named;
+
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.params.HttpParams;
+import org.junit.Test;
+
+import com.google.gson.Gson;
 
 /** @author Eric Denman (edenman@squareup.com) */
 public class HttpRequestBuilderTest {
   private static final Gson GSON = new Gson();
   private static final String API_URL = "http://taqueria.com/lengua/taco";
 
+  private static final Module SIMPLE_MODULE = new Module(){
+		 @Override
+		public void preHandle(HttpUriRequest request) {
+			HttpParams params = request.getParams();
+			params.setParameter("byModule", "Yeah B*ch,I'm added by module");
+		}
+	 };
+	 
+	 private static final Module ONLY_PUT_MODULE = new AbstractExecutableModule() {
+		
+		@Override
+		public void handler(HttpUriRequest request) {
+			HttpParams params = request.getParams();
+			params.setParameter("onlyPutModule", "You should see me");
+			
+		}
+		
+		@Override
+		public boolean canExecute(HttpUriRequest request) {
+			return request.getMethod().equals("PUT");
+		}
+	};
+  
   @Test public void testRegex() throws Exception {
     expectParams("");
     expectParams("foo");
@@ -43,6 +70,8 @@ public class HttpRequestBuilderTest {
     }
   }
 
+  
+  
   @Test public void testNormalGet() throws Exception {
     Method method =
         MyService.class.getMethod("normalGet", String.class, Callback.class);
@@ -112,6 +141,38 @@ public class HttpRequestBuilderTest {
     assertThat(requestBody).isEqualTo("{\"bodyText\":\"" + bodyText + "\"}");
   }
 
+  @Test public void testSimpleModuleHasBeenAdded() throws Exception {
+	  Method method =
+		        MyService.class.getMethod("normalPut", String.class, String.class, Callback.class);
+		    String expectedId = UUID.randomUUID().toString();
+		    String bodyText = UUID.randomUUID().toString();
+		    Object[] args = new Object[] {expectedId, bodyText, new MyCallback()};
+		    HttpUriRequest request = build(method, args);
+		    assertThat(request.getParams().getParameter("byModule")).isEqualTo("Yeah B*ch,I'm added by module");
+	  
+  }
+  
+  @Test public void testConditionalModuleHasBeenAddedOnlyToPut() throws Exception {
+	  Method method =
+		        MyService.class.getMethod("normalPut", String.class, String.class, Callback.class);
+		    String expectedId = UUID.randomUUID().toString();
+		    String bodyText = UUID.randomUUID().toString();
+		    Object[] args = new Object[] {expectedId, bodyText, new MyCallback()};
+		    HttpUriRequest request = build(method, args);
+		    assertThat(request.getParams().getParameter("onlyPutModule")).isEqualTo("You should see me");
+	  
+  }
+  @Test public void testConditionalModuleHasNotBeenAddedOnlyToPut() throws Exception {
+	  Method method =
+		        MyService.class.getMethod("getWithPathParam", String.class, String.class, Callback.class);
+		    String expectedId = UUID.randomUUID().toString();
+		    String bodyText = UUID.randomUUID().toString();
+		    Object[] args = new Object[] {expectedId, bodyText, new MyCallback()};
+		    HttpUriRequest request = build(method, args);
+		    assertThat(request.getParams().getParameter("onlyPutModule")).isNull();
+	  
+  }
+  
   @Test public void testNormalPutWithPathParams() throws Exception {
     Method method =
         MyService.class.getMethod("normalPut", String.class, String.class, Callback.class);
@@ -160,6 +221,8 @@ public class HttpRequestBuilderTest {
     }
   }
 
+  
+  
   @Test public void testRegularWithNoPathParam() throws Exception {
     Method method = MyService.class.getMethod("regularNoPathParam", String.class, Callback.class);
     String otherParam = UUID.randomUUID().toString();
@@ -200,6 +263,7 @@ public class HttpRequestBuilderTest {
         .setMethod(method, false)
         .setArgs(args)
         .setApiUrl(API_URL)
+        .setModules(new ArrayList<Module>(){{add(SIMPLE_MODULE);add(ONLY_PUT_MODULE);}})
         .build();
   }
 

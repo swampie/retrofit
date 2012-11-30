@@ -1,5 +1,8 @@
 package retrofit.http;
 
+import static java.util.logging.Level.WARNING;
+import static org.apache.http.HttpStatus.SC_UNAUTHORIZED;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationHandler;
@@ -8,13 +11,17 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.lang.reflect.WildcardType;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.inject.Provider;
+
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -23,6 +30,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.util.EntityUtils;
+
 import retrofit.http.Callback.ServerError;
 import retrofit.http.HttpProfiler.RequestInformation;
 import retrofit.http.RestException.ClientHttpException;
@@ -31,9 +39,6 @@ import retrofit.http.RestException.NetworkException;
 import retrofit.http.RestException.ServerHttpException;
 import retrofit.http.RestException.UnauthorizedHttpException;
 import retrofit.http.RestException.UnexpectedException;
-
-import static java.util.logging.Level.WARNING;
-import static org.apache.http.HttpStatus.SC_UNAUTHORIZED;
 
 /**
  * Converts Java method calls to Rest calls.
@@ -53,9 +58,9 @@ public class RestAdapter {
   private final Headers headers;
   private final Converter converter;
   private final HttpProfiler profiler;
-
+  private final List<Module> modules;
   private RestAdapter(Server server, Provider<HttpClient> httpClientProvider, Executor httpExecutor,
-      Executor callbackExecutor, Headers headers, Converter converter, HttpProfiler profiler) {
+      Executor callbackExecutor, Headers headers, Converter converter, HttpProfiler profiler,List<Module> modules) {
     this.server = server;
     this.httpClientProvider = httpClientProvider;
     this.httpExecutor = httpExecutor;
@@ -63,6 +68,7 @@ public class RestAdapter {
     this.headers = headers;
     this.converter = converter;
     this.profiler = profiler;
+    this.modules = modules;
   }
 
   /**
@@ -322,7 +328,9 @@ public class RestAdapter {
     private Headers headers;
     private Converter converter;
     private HttpProfiler profiler;
-
+    
+    private List<Module> modules = new ArrayList<Module>();
+    
     public Builder setServer(String endpoint) {
       if (endpoint == null) throw new NullPointerException("endpoint");
       return setServer(new Server(endpoint));
@@ -349,6 +357,12 @@ public class RestAdapter {
       return this;
     }
 
+    public Builder addModule(Module m){
+    	if(this.modules.contains(m)) throw new IllegalArgumentException("same module already exists in the module chain");
+    	this.modules.add(m);
+    	return this;
+    }
+    
     /**
      * Executors used for asynchronous HTTP client downloads and callbacks.
      *
@@ -387,7 +401,7 @@ public class RestAdapter {
         throw new IllegalArgumentException("Server may not be null.");
       }
       ensureSaneDefaults();
-      return new RestAdapter(server, clientProvider, httpExecutor, callbackExecutor, headers, converter, profiler);
+      return new RestAdapter(server, clientProvider, httpExecutor, callbackExecutor, headers, converter, profiler,modules);
     }
 
     private void ensureSaneDefaults() {
