@@ -78,9 +78,10 @@ final class HttpRequestBuilder {
   }
 
   HttpRequestBuilder setModules(List<Module> modules) {
-	    this.modules = modules;
-	    return this;
-	  }
+    this.modules = modules;
+    return this;
+  }
+
   Object[] getArgs() {
     return args;
   }
@@ -223,9 +224,11 @@ final class HttpRequestBuilder {
     }
 
     HttpUriRequest req =  requestLine.getHttpMethod().createFrom(this);
-    for (Module m :this.modules) {
-		m.preHandle(req);
-	}
+    if (this.modules != null) {
+	    for (Module m :this.modules) {
+		    m.preHandle(req);
+		}
+    }
     return req;
   }
 

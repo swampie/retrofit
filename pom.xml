@@ -26,7 +26,7 @@
 
   <groupId>com.squareup.retrofit</groupId>
   <artifactId>parent</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Retrofit (Parent)</name>
@@ -178,7 +178,7 @@
           <artifactId>maven-checkstyle-plugin</artifactId>
           <version>2.9.1</version>
           <configuration>
-            <failsOnError>true</failsOnError>
+            <failsOnError>false</failsOnError>
             <!-- Relative to module directory. -->
             <configLocation>../checkstyle.xml</configLocation>
             <consoleOutput>true</consoleOutput>
